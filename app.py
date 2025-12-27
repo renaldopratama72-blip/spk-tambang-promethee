@@ -72,7 +72,7 @@ st.markdown("""
 # ==========================================
 KRITERIA_CONFIG = {
     'C1':  {'nama': 'Skala Prod',     'tipe': 'max', 'bobot': 0.0225, 'q': 5,  'p': 20},
-    'C2':  {'nama': 'Kebutuhan Market',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
+    'C2':  {'nama': 'Kebutuhan',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
     'C3':  {'nama': 'Profitabilitas', 'tipe': 'max', 'bobot': 0.1440, 'q': 5,  'p': 20}, 
     'C4':  {'nama': 'COGS (Biaya)',   'tipe': 'min', 'bobot': 0.1845, 'q': 5,  'p': 20}, 
     'C5':  {'nama': 'Coal Supply',    'tipe': 'min', 'bobot': 0.0385, 'q': 5,  'p': 20}, 
@@ -171,19 +171,23 @@ def generate_insight(df, winner_name):
     return top_3_names, weak_1_name
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION
+# 4. SIDEBAR NAVIGATION (FIXED)
 # ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
-    # KUNCI UTAMA AUTO-REDIRECT: Tambahkan parameter key='nav_menu'
+    # ⚠️ BAGIAN KRUSIAL UNTUK PINDAH HALAMAN
+    # Kita beri nama key="main_nav". Ini agar tombol bisa mengubah nilai navigasi ini.
+    if 'main_nav' not in st.session_state:
+        st.session_state['main_nav'] = 'Dashboard'
+
     selected = option_menu(
         menu_title=None,
         options=["Dashboard", "Input Data", "Panduan Nilai"],
         icons=["speedometer2", "keyboard", "journal-check"],
         default_index=0,
-        key="nav_menu", # Ini penting agar bisa diubah dari kode
+        key="main_nav", # <--- INI KUNCINYA. Key menghubungkan menu dengan Session State.
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
             "icon": {"color": "#2563eb", "font-size": "18px"}, 
@@ -249,21 +253,16 @@ if selected == "Panduan Nilai":
     st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
 
 
-# --- HALAMAN: INPUT DATA (AUTO REDIRECT) ---
+# --- HALAMAN: INPUT DATA (AUTO REDIRECT FIX) ---
 elif selected == "Input Data":
     st.title("📝 Input & Edit Data")
     st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung untuk melakukan simulasi.")
     
-    # === POP UP PANDUAN (EXPANDER) ===
+    # === POP UP PANDUAN ===
     with st.expander("📖 Buka Panduan Penilaian (Contekan)", expanded=False):
         st.info("👇 **Panduan Pengisian Skor (0-100)**. Klik header kolom untuk mengurutkan.")
         df_popup = get_rubrik_df()
-        st.dataframe(
-            df_popup,
-            use_container_width=True, 
-            hide_index=True,
-            height=300
-        )
+        st.dataframe(df_popup, use_container_width=True, hide_index=True, height=300)
     
     # === EDITOR UTAMA ===
     st.markdown("### Tabel Input")
@@ -283,18 +282,18 @@ elif selected == "Input Data":
         st.warning("⚠️ **Perhatian**")
         st.markdown("""
         1. **Kolom C1-C14**: Isi angka 0-100.
-        2. **Gunakan Panduan** di atas jika bingung mengisi nilai.
+        2. **Gunakan Panduan** jika bingung.
         """)
         
-        # === TOMBOL SIMPAN & REDIRECT ===
-        if st.button("💾 Simpan & Analisis ➡️", type="primary"):
-            # 1. Simpan Data (Sudah otomatis via session state, tapi kita pastikan)
+        # === TOMBOL SIMPAN & PINDAH HALAMAN ===
+        if st.button("💾 Simpan & Lihat Dashboard ➡️", type="primary"):
+            # 1. Simpan data (Data editor otomatis tersimpan ke session, kita tegaskan saja)
             st.session_state.df_input = edited_df
             
-            # 2. Trik Auto-Redirect: Ubah value menu
-            st.session_state["nav_menu"] = "Dashboard"
+            # 2. UBAH NAVIGASI KE DASHBOARD SECARA PAKSA
+            st.session_state["main_nav"] = "Dashboard"
             
-            # 3. Rerun aplikasi agar pindah halaman
+            # 3. RELOAD APLIKASI
             st.rerun()
 
 
