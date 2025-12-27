@@ -43,7 +43,7 @@ st.markdown("""
         background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eef0f2;
         text-align: center; transition: transform 0.2s;
-        height: 100%; /* Agar tinggi sama */
+        height: 100%;
     }
     .metric-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
     .metric-value { font-size: 2rem; font-weight: 800; color: #1e293b; }
@@ -66,12 +66,11 @@ st.markdown("""
 
     /* === MOBILE RESPONSIVE TWEAKS === */
     @media only screen and (max-width: 600px) {
-        .hero-name { font-size: 2.2rem !important; } /* Kecilkan font Judul di HP */
+        .hero-name { font-size: 2.2rem !important; }
         .hero-winner { padding: 20px !important; }
         .metric-value { font-size: 1.5rem !important; }
         .metric-card { padding: 15px !important; margin-bottom: 10px; }
         .insight-box { padding: 15px !important; }
-        div[data-testid="column"] { width: 100% !important; flex: 1 1 auto !important; min-width: auto !important; }
     }
 
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -188,11 +187,10 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
-    # MANUAL MODE
     selected_option = option_menu(
         menu_title=None,
-        options=["Dashboard", "Input Data", "Panduan Nilai"],
-        icons=["speedometer2", "keyboard", "journal-check"],
+        options=["Dashboard", "Input Data", "Tentang Aplikasi"],
+        icons=["speedometer2", "keyboard", "info-circle"],
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
@@ -237,29 +235,40 @@ elif input_method == "Input Manual / Edit" and st.session_state.df_input.empty:
     st.session_state.df_input = pd.DataFrame(dummy_data)
 
 
-# --- HALAMAN: PANDUAN NILAI ---
-if selected_option == "Panduan Nilai":
-    st.title("📖 Panduan Parameter")
+# --- HALAMAN: TENTANG APLIKASI (UPDATED) ---
+if selected_option == "Tentang Aplikasi":
+    st.title("ℹ️ Tentang Aplikasi")
+    
     st.markdown("""
-    Gunakan tabel di bawah ini sebagai acuan saat mengisi skor pada menu **Input Data**.
-    Rentang nilai dibagi menjadi 3 kategori: **Rendah (0-49)**, **Menengah (50-75)**, dan **Tinggi (76-99)**.
+    ### Sistem Pendukung Keputusan (SPK) Sektor Pertambangan
+    Aplikasi ini dirancang untuk membantu manajemen dalam memilih **Izin Usaha Pertambangan (IUP)** terbaik berdasarkan analisis multi-kriteria yang komprehensif.
+    
+    #### 🔍 Metode: PROMETHEE II
+    *Preference Ranking Organization Method for Enrichment Evaluation* (PROMETHEE) adalah metode penentuan urutan (ranking) dalam analisis multikriteria.
+    
+    **Mengapa PROMETHEE II?**
+    1.  **Akurasi Tinggi:** Mempertimbangkan preferensi, ambang batas ketidakpedulian (Q), dan preferensi mutlak (P).
+    2.  **Net Flow:** Memberikan nilai akhir yang jelas (positif/negatif) untuk menentukan dominasi suatu alternatif.
+    3.  **Transparansi:** Proses perhitungan dapat ditelusuri dari perbandingan berpasangan.
+
+    #### 🛠️ Fitur Utama
+    - **Analisis 14 Kriteria Strategis:** Mulai dari aspek teknis (Cadangan, Geologi) hingga non-teknis (Sosial, Legalitas).
+    - **Simulasi (What-If Analysis):** Edit nilai skor secara langsung untuk melihat perubahan ranking.
+    - **Visualisasi:** Radar Chart dan Bar Chart untuk perbandingan yang intuitif.
+    - **Management Insight:** Rekomendasi naratif otomatis berbasis data.
+
+    #### 👨‍💻 Profil Pengembang
+    Aplikasi ini dikembangkan sebagai bagian dari Tesis Magister Manajemen.
+    
+    **Nama:** Renaldo Pratama  
+    **Instansi:** Universitas Bakrie  
+    **Pembimbing:** Arief Bimantoro Suharko, Ph.D.
     """)
     
-    df_rubrik = get_rubrik_df()
-    st.dataframe(
-        df_rubrik, 
-        use_container_width=True, 
-        hide_index=True,
-        column_config={
-            "Kode": st.column_config.TextColumn("Kode", width="small"),
-            "🔴 Rendah (0-49)": st.column_config.TextColumn("Rendah (Buruk)", width="medium"),
-            "🟢 Tinggi (76-99)": st.column_config.TextColumn("Tinggi (Baik/Ideal)", width="medium"),
-        }
-    )
-    st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
+    st.info("Versi Aplikasi: 1.0 (Stable) | Dibuat dengan Python & Streamlit")
 
 
-# --- HALAMAN: INPUT DATA (MURNI TANPA REDIRECT) ---
+# --- HALAMAN: INPUT DATA ---
 elif selected_option == "Input Data":
     st.title("📝 Input & Edit Data")
     st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung untuk melakukan simulasi.")
@@ -272,8 +281,6 @@ elif selected_option == "Input Data":
     
     # === EDITOR UTAMA ===
     st.markdown("### Tabel Input")
-    
-    # Logic Column: Di HP dia akan stack, di Desktop dia split
     col_input, col_info = st.columns([3, 1])
     
     with col_input:
@@ -284,7 +291,6 @@ elif selected_option == "Input Data":
             height=450,
             key="editor"
         )
-        # Update State realtime
         st.session_state.df_input = edited_df
 
     with col_info:
@@ -294,7 +300,6 @@ elif selected_option == "Input Data":
         2. **Gunakan Panduan** jika bingung.
         """)
         
-        # === TOMBOL SIMPAN (CLEAN) ===
         if st.button("💾 Simpan Data", type="primary"):
             st.session_state.df_input = edited_df
             st.success("Data Tersimpan! Klik Dashboard di menu kiri untuk melihat hasil.")
@@ -353,7 +358,7 @@ elif selected_option == "Dashboard":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # KPI: Menggunakan st.columns biasa, tapi CSS akan handle stacking di Mobile
+                # KPI
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df_to_process)}</div><div class='metric-label'>Alternatif</div></div>", unsafe_allow_html=True)
                 with c2: st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#2563eb;'>{hasil.iloc[1]['Net Flow']:.3f}</div><div class='metric-label'>Runner Up ({hasil.index[1]})</div></div>", unsafe_allow_html=True)
