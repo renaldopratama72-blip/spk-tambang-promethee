@@ -73,7 +73,7 @@ st.markdown("""
 # ==========================================
 KRITERIA_CONFIG = {
     'C1':  {'nama': 'Skala Prod',     'tipe': 'max', 'bobot': 0.0225, 'q': 5,  'p': 20},
-    'C2':  {'nama': 'Kebutuhan',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
+    'C2':  {'nama': 'Kebutuhan Market',    'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
     'C3':  {'nama': 'Profitabilitas', 'tipe': 'max', 'bobot': 0.1440, 'q': 5,  'p': 20}, 
     'C4':  {'nama': 'COGS (Biaya)',   'tipe': 'min', 'bobot': 0.1845, 'q': 5,  'p': 20}, 
     'C5':  {'nama': 'Coal Supply',    'tipe': 'min', 'bobot': 0.0385, 'q': 5,  'p': 20}, 
@@ -375,3 +375,4 @@ elif selected == "Dashboard":
 
     except Exception as e:
         st.error(f"Error: {e}")
+
