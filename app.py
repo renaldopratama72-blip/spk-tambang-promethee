@@ -4,7 +4,6 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
-import time
 
 # ==========================================
 # 1. SETUP HALAMAN & TEMA
@@ -30,16 +29,16 @@ st.markdown("""
         padding: 25px;
         border-radius: 12px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        margin-top: 30px;
-        margin-bottom: 30px;
+        margin-top: 30px; margin-bottom: 30px;
     }
-    .insight-title { font-weight: 800; color: #1e293b; font-size: 1.2rem; margin-bottom: 15px; display: flex; align-items: center; }
-    .insight-title::before { content: "📝"; margin-right: 10px; font-size: 1.4rem; }
+    .insight-title { font-weight: 800; color: #1e293b; font-size: 1.2rem; margin-bottom: 15px; }
     .insight-text { color: #475569; line-height: 1.7; font-size: 1.05rem; }
-    .strength-tag { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.95em; border: 1px solid #bbf7d0; }
-    .weakness-tag { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.95em; border: 1px solid #fecaca; }
+    
+    /* Tags */
+    .strength-tag { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.9em; }
+    .weakness-tag { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.9em; }
 
-    /* Kartu Metrik */
+    /* Metric Cards */
     .metric-card {
         background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eef0f2;
@@ -49,7 +48,7 @@ st.markdown("""
     .metric-value { font-size: 2rem; font-weight: 800; color: #1e293b; }
     .metric-label { color: #64748b; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* Kartu Juara */
+    /* Hero Winner */
     .hero-winner {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: white; padding: 40px; border-radius: 20px; margin-bottom: 20px;
@@ -64,16 +63,19 @@ st.markdown("""
         background: -webkit-linear-gradient(#eee, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
+    /* Rubrik Table Styling */
+    .rubrik-table { font-size: 0.9rem; }
+
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CONFIG DATA
+# 2. CONFIG DATA & RUBRIK PENILAIAN
 # ==========================================
 KRITERIA_CONFIG = {
     'C1':  {'nama': 'Skala Prod',     'tipe': 'max', 'bobot': 0.0225, 'q': 5,  'p': 20},
-    'C2':  {'nama': 'Kebutuhan Market',    'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
+    'C2':  {'nama': 'Kebutuhan',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
     'C3':  {'nama': 'Profitabilitas', 'tipe': 'max', 'bobot': 0.1440, 'q': 5,  'p': 20}, 
     'C4':  {'nama': 'COGS (Biaya)',   'tipe': 'min', 'bobot': 0.1845, 'q': 5,  'p': 20}, 
     'C5':  {'nama': 'Coal Supply',    'tipe': 'min', 'bobot': 0.0385, 'q': 5,  'p': 20}, 
@@ -86,6 +88,24 @@ KRITERIA_CONFIG = {
     'C12': {'nama': 'Sektor Bisnis',  'tipe': 'max', 'bobot': 0.0035, 'q': 2,  'p': 10},
     'C13': {'nama': 'Rencana P',      'tipe': 'max', 'bobot': 0.0165, 'q': 2,  'p': 10},
     'C14': {'nama': 'Relasi',         'tipe': 'max', 'bobot': 0.0300, 'q': 2,  'p': 10},
+}
+
+# Database Panduan Penilaian (Dari File Excel User)
+RUBRIK_PENILAIAN = {
+    'C1': {'Low': 'Kapasitas Kecil (Cadangan Minim)', 'Mid': 'Kapasitas Sedang (5-10 Thn)', 'High': 'Kapasitas Besar (>10 Thn)'},
+    'C2': {'Low': 'Sulit Dijual (Low Rank <3000)', 'Mid': 'Pasar Domestik (Std PLN)', 'High': 'Premium/Ekspor (>4500)'},
+    'C3': {'Low': 'Rugi / Margin Negatif', 'Mid': 'Margin Tipis / Sensitif', 'High': 'Sangat Untung (High NPM)'},
+    'C4': {'Low': 'Biaya MAHAL (Hauling Jauh)', 'Mid': 'Biaya WAJAR (Avg Industry)', 'High': 'Biaya MURAH (Efisien)'},
+    'C5': {'Low': 'Rantai RUMIT (Double Handling)', 'Mid': 'Standar (Hambatan Minor)', 'High': 'SEDERHANA (Pit-to-port lancar)'},
+    'C6': {'Low': 'Belum Ada / Bermasalah', 'Mid': 'Proses Berjalan', 'High': 'Lengkap (CnC)'},
+    'C7': {'Low': 'Kompleks (SR Tinggi >10)', 'Mid': 'Ekonomis (SR 5-8)', 'High': 'Sangat Baik (SR <4)'},
+    'C8': {'Low': 'Hutan Lindung / Konflik', 'Mid': 'Butuh Izin Khusus', 'High': 'Area Putih (APL)'},
+    'C9': {'Low': 'Pencemaran Tinggi', 'Mid': 'Terdampak Sedang', 'High': 'Aman / Jauh Pemukiman'},
+    'C10': {'Low': 'Konflik / Demo Warga', 'Mid': 'Kondusif (Berbayar)', 'High': 'Sangat Mendukung'},
+    'C11': {'Low': 'Amdal Belum Ada', 'Mid': 'Dalam Revisi', 'High': 'Amdal Lengkap'},
+    'C12': {'Low': 'Baru Merintis', 'Mid': 'Pemain Lama', 'High': 'Market Leader'},
+    'C13': {'Low': 'Tidak Jelas / Spekulatif', 'Mid': 'Ada tapi Belum Detail', 'High': 'Matang & Terstruktur'},
+    'C14': {'Low': 'Tidak Dikenal', 'Mid': 'Relasi Biasa', 'High': 'Relasi Kuat / Strategis'}
 }
 
 # ==========================================
@@ -143,15 +163,17 @@ def generate_insight(df, winner_name):
     return top_3_names, weak_1_name
 
 # ==========================================
-# 4. SIDEBAR
+# 4. SIDEBAR NAVIGATION
 # ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
+    
+    # Menu Navigasi
     selected = option_menu(
         menu_title=None,
-        options=["Dashboard", "Data Input", "Panduan"],
-        icons=["speedometer2", "table", "book"],
+        options=["Dashboard", "Input Data", "Panduan Nilai"],
+        icons=["speedometer2", "keyboard", "journal-check"],
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
@@ -160,9 +182,17 @@ with st.sidebar:
             "nav-link-selected": {"background-color": "#2563eb"},
         }
     )
+    
     st.divider()
-    st.markdown("**📂 Sumber Data**")
-    uploaded_file = st.file_uploader("Upload Excel", type=['xlsx'], label_visibility="collapsed")
+    
+    # Opsi Input Data
+    st.markdown("**📂 Metode Input Data**")
+    input_method = st.radio("Pilih Sumber:", ["Upload Excel", "Input Manual / Edit"], label_visibility="collapsed")
+    
+    uploaded_file = None
+    if input_method == "Upload Excel":
+        uploaded_file = st.file_uploader("File .xlsx", type=['xlsx'])
+    
     st.divider()
     st.caption("Developed by **Renaldo Pratama**\nMM Universitas Bakrie")
 
@@ -170,209 +200,202 @@ with st.sidebar:
 # 5. HALAMAN UTAMA
 # ==========================================
 
-if uploaded_file is None:
-    # --- LANDING PAGE ---
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        st.markdown(
-            """
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="color:#2563eb; font-weight:800;">Selamat Datang! 👋</h1>
-                <p style="font-size: 1.1rem; color: #666;">
-                    <b>Sistem Pendukung Keputusan Pemilihan IUP Terbaik</b><br>
-                    Metode PROMETHEE II untuk Analisis Strategis Tambang.
-                </p>
-            </div>
-            """, unsafe_allow_html=True
-        )
-        st.image(
-            "https://images.squarespace-cdn.com/content/v1/5acda2f4c258b4bd2d14dca2/1653447668933-C9BBM4LAGE1BBEINI7FP/Perusahaan+Tambang+di+Bursa+Efek+Indonesia.jpg?format=2500w",
-            caption="Ilustrasi: Sektor Pertambangan di Indonesia",
-            use_container_width=True
-        )
-        st.markdown(
-            """
-            <div style="text-align: center; margin-top: 25px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <p style="color: #475569; font-size: 0.95rem; margin: 0;">
-                    👈 Silakan <b>upload file data Excel (.xlsx)</b> pada menu di sebelah kiri untuk memulai analisis.
-                </p>
-            </div>
-            """, unsafe_allow_html=True
-        )
+# --- INISIALISASI SESSION STATE UNTUK DATA ---
+if 'df_input' not in st.session_state:
+    # Template Default (Data Kosong)
+    default_cols = ['Nama IUP'] + list(KRITERIA_CONFIG.keys())
+    st.session_state.df_input = pd.DataFrame(columns=default_cols)
 
-elif selected == "Data Input":
-    st.title("📂 Tinjauan Data Input")
+# Logika Load Data
+if input_method == "Upload Excel" and uploaded_file is not None:
     try:
-        df = pd.read_excel(uploaded_file)
-        df = df.set_index(df.columns[0])
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            st.markdown("#### Tabel Data Mentah")
-            st.dataframe(df.style.background_gradient(cmap="Blues"), use_container_width=True, height=500)
-        with c2:
-            st.markdown("#### Statistik")
-            st.write(df.describe())
-    except Exception as e:
-        st.error("File tidak valid atau belum diupload.")
+        temp_df = pd.read_excel(uploaded_file)
+        # Pastikan kolom pertama jadi index nanti, tapi di editor kita butuh kolomnya
+        st.session_state.df_input = temp_df
+    except:
+        st.error("File tidak valid")
+elif input_method == "Input Manual / Edit" and st.session_state.df_input.empty:
+    # Jika manual dan kosong, buat 3 baris dummy
+    dummy_data = {'Nama IUP': ['IUP A', 'IUP B', 'IUP C']}
+    for k in KRITERIA_CONFIG.keys():
+        dummy_data[k] = [0, 0, 0] # Isi 0 dulu
+    st.session_state.df_input = pd.DataFrame(dummy_data)
 
-elif selected == "Panduan":
-    st.title("ℹ️ Panduan & Spesifikasi Data")
+
+# --- HALAMAN: PANDUAN NILAI (REQ USER) ---
+if selected == "Panduan Nilai":
+    st.title("📖 Panduan Parameter Penilaian (0-100)")
     st.markdown("""
-    Agar sistem dapat menghitung skor PROMETHEE II dengan akurat, mohon perhatikan spesifikasi data di bawah ini.
+    Gunakan tabel di bawah ini sebagai acuan saat mengisi skor pada menu **Input Data**.
+    Rentang nilai dibagi menjadi 3 kategori: **Rendah (0-49)**, **Menengah (50-75)**, dan **Tinggi (76-99)**.
     """)
     
-    # --- Bagian 1: Kamus Data (Penjelasan C1-C14) ---
-    st.subheader("1. Kriteria Penilaian (Kamus Data)")
-    st.markdown("Data Excel Anda **wajib** memiliki kolom dengan kode kriteria berikut:")
+    # Membuat Tabel Rubrik Rapi
+    rubrik_data = []
+    for kode, desc in RUBRIK_PENILAIAN.items():
+        rubrik_data.append({
+            "Kode": kode,
+            "Kriteria": KRITERIA_CONFIG[kode]['nama'],
+            "🔴 Rendah (0-49)": desc['Low'],
+            "🟡 Sedang (50-75)": desc['Mid'],
+            "🟢 Tinggi (76-99)": desc['High']
+        })
     
-    # Membuat DataFrame untuk tampilan Kamus Data yang rapi
-    dict_data = []
-    for k, v in KRITERIA_CONFIG.items():
-        arah = "Maksimal (Nilai Tinggi Lebih Baik)" if v['tipe'] == 'max' else "Minimal (Nilai Rendah Lebih Baik)"
-        dict_data.append({"Kode": k, "Nama Kriteria": v['nama'], "Sifat Kriteria": arah})
-    
-    df_kamus = pd.DataFrame(dict_data)
+    df_rubrik = pd.DataFrame(rubrik_data)
     st.dataframe(
-        df_kamus.style.applymap(lambda x: 'color: red; font-weight:bold' if 'Minimal' in x else 'color: green', subset=['Sifat Kriteria']), 
+        df_rubrik, 
         use_container_width=True, 
-        hide_index=True
-    )
-    
-    # --- Bagian 2: Contoh Format Tabel ---
-    st.divider()
-    st.subheader("2. Format Tabel Excel (.xlsx)")
-    st.info("⚠️ **PENTING:** Judul Kolom (Header) harus menggunakan KODE (**C1, C2, dst**), bukan nama kriteria.")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Contoh Struktur Data yang Benar:**")
-        # Contoh Dummy Data
-        dummy_data = {
-            "Nama Alternatif": ["IUP Tambang A", "IUP Tambang B", "IUP Tambang C"],
-            "C1": [5000, 7500, 6000],
-            "C2": [8, 9, 7],
-            "C3": [15, 20, 18],
-            "C...": ["...", "...", "..."],
-            "C14": [90, 85, 88]
+        hide_index=True,
+        column_config={
+            "Kode": st.column_config.TextColumn("Kode", width="small"),
+            "🔴 Rendah (0-49)": st.column_config.TextColumn("Rendah (Buruk)", width="medium"),
+            "🟢 Tinggi (76-99)": st.column_config.TextColumn("Tinggi (Baik/Ideal)", width="medium"),
         }
-        st.table(pd.DataFrame(dummy_data))
+    )
+    st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
+
+
+# --- HALAMAN: INPUT DATA (LIVE EDITOR) ---
+elif selected == "Input Data":
+    st.title("📝 Input & Edit Data")
+    st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung. Berguna untuk simulasi: *'Bagaimana jika IUP A perizinannya diperbaiki?'*")
     
-    with c2:
-        st.markdown("**Keterangan:**")
+    col_input, col_info = st.columns([3, 1])
+    
+    with col_input:
+        # EDITOR DATA
+        edited_df = st.data_editor(
+            st.session_state.df_input,
+            num_rows="dynamic",
+            use_container_width=True,
+            height=450,
+            key="editor"
+        )
+        
+        # Simpan perubahan ke session state
+        st.session_state.df_input = edited_df
+
+    with col_info:
+        st.warning("⚠️ **Perhatian**")
         st.markdown("""
-        * **Kolom 1:** Nama Alternatif / Perusahaan Tambang.
-        * **Kolom C1 - C14:** Masukkan nilai numerik (angka).
-        * Pastikan tidak ada sel yang kosong (blank).
+        Pastikan format kolom:
+        1. **Kolom 1**: Nama IUP
+        2. **Kolom C1-C14**: Angka Skor (0-100)
         """)
+        st.markdown("Lihat menu **Panduan Nilai** untuk arti skor.")
 
+    if st.button("Simpan & Lihat Hasil di Dashboard ➡️", type="primary"):
+        st.success("Data tersimpan! Silakan pindah ke menu Dashboard.")
+
+
+# --- HALAMAN: DASHBOARD ---
 elif selected == "Dashboard":
-    try:
-        df = pd.read_excel(uploaded_file)
-        df = df.set_index(df.columns[0])
-        
-        wajib = list(KRITERIA_CONFIG.keys())
-        kurang = [c for c in wajib if c not in df.columns]
-        
-        if kurang:
-            st.error(f"❌ Data Excel tidak valid. Kolom berikut hilang: {kurang}. Silakan cek menu 'Panduan' untuk format yang benar.")
-        else:
-            # Hitung & Insight
-            hasil = hitung_promethee(df)
-            best_mine = hasil.index[0]
-            best_score = hasil.iloc[0]['Net Flow']
-            strengths, weakness = generate_insight(df, best_mine)
+    # Cek apakah ada data
+    df_to_process = st.session_state.df_input.copy()
+    
+    if df_to_process.empty or len(df_to_process) < 2:
+        # TAMPILAN AWAL (JIKA DATA KOSONG)
+        st.markdown("<br>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            st.image(
+                "https://images.squarespace-cdn.com/content/v1/5acda2f4c258b4bd2d14dca2/1653447668933-C9BBM4LAGE1BBEINI7FP/Perusahaan+Tambang+di+Bursa+Efek+Indonesia.jpg?format=2500w",
+                caption="Sektor Pertambangan Indonesia", use_container_width=True
+            )
+            st.info("👈 Data masih kosong. Silakan Upload Excel atau Input Manual di menu sebelah kiri.")
             
-            # Bagian 1: Parameter
-            st.subheader("1. Parameter & Konfigurasi Model")
-            with st.expander("ℹ️ Lihat Detail Bobot & Threshold (Q/P) yang Digunakan", expanded=False):
-                param_data = []
-                for k, v in KRITERIA_CONFIG.items():
-                    param_data.append({
-                        "Kode": k,
-                        "Nama Kriteria": v['nama'],
-                        "Tipe": v['tipe'].upper(),
-                        "Bobot": f"{v['bobot']:.4f}",
-                        "Q (Indifference)": v['q'],
-                        "P (Preference)": v['p']
-                    })
-                param_df = pd.DataFrame(param_data)
-                st.dataframe(
-                    param_df.style.applymap(lambda x: 'background-color: #e2e8f0' if x in ['MIN'] else '', subset=['Tipe']),
-                    use_container_width=True, 
-                    hide_index=True
-                )
-                st.caption("*Catatan: Tipe 'MIN' berarti semakin kecil nilai semakin baik (contoh: Biaya).")
+    else:
+        # PROSES DATA DARI EDITOR
+        try:
+            # Set kolom pertama sebagai Index (Nama IUP)
+            df_to_process = df_to_process.set_index(df_to_process.columns[0])
             
-            st.divider()
-            st.subheader("2. Hasil Analisis Keputusan")
+            # Validasi Kolom
+            wajib = list(KRITERIA_CONFIG.keys())
+            kurang = [c for c in wajib if c not in df_to_process.columns]
+            
+            if kurang:
+                st.error(f"❌ Data belum lengkap. Kolom hilang: {kurang}")
+            else:
+                # HITUNG PROMETHEE
+                hasil = hitung_promethee(df_to_process)
+                best_mine = hasil.index[0]
+                best_score = hasil.iloc[0]['Net Flow']
+                strengths, weakness = generate_insight(df_to_process, best_mine)
+                
+                # === 1. PARAMETER ===
+                st.subheader("1. Parameter & Konfigurasi Model")
+                with st.expander("ℹ️ Lihat Detail Bobot & Threshold", expanded=False):
+                    param_data = []
+                    for k, v in KRITERIA_CONFIG.items():
+                        param_data.append({
+                            "Kode": k, "Nama": v['nama'], "Tipe": v['tipe'].upper(),
+                            "Bobot": f"{v['bobot']:.4f}", "Q": v['q'], "P": v['p']
+                        })
+                    st.dataframe(pd.DataFrame(param_data), use_container_width=True, hide_index=True)
 
-            # Hero Section
-            st.markdown(f"""
-            <div class="hero-winner">
-                <div class="hero-title">REKOMENDASI KEPUTUSAN TERBAIK</div>
-                <div class="hero-name">{best_mine}</div>
-                <div style="font-size: 1.2rem; margin-top: 10px;">
-                    💎 Skor Net Flow: <b>{best_score:.4f}</b> | Status: <span style="background: #2ecc71; padding: 2px 10px; border-radius: 5px; font-size: 0.9rem;">Sangat Direkomendasikan</span>
+                st.divider()
+                st.subheader("2. Hasil Analisis Keputusan")
+
+                # === HERO WINNER ===
+                st.markdown(f"""
+                <div class="hero-winner">
+                    <div class="hero-title">REKOMENDASI KEPUTUSAN TERBAIK</div>
+                    <div class="hero-name">{best_mine}</div>
+                    <div style="font-size: 1.2rem; margin-top: 10px;">
+                        💎 Skor Net Flow: <b>{best_score:.4f}</b> | Status: <span style="background: #2ecc71; padding: 2px 10px; border-radius: 5px; font-size: 0.9rem;">Sangat Direkomendasikan</span>
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # KPI Cards
-            col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
-            with col_kpi1:
-                st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df)}</div><div class='metric-label'>Jumlah Alternatif</div></div>", unsafe_allow_html=True)
-            with col_kpi2:
-                st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#2563eb;'>{hasil.iloc[1]['Net Flow']:.3f}</div><div class='metric-label'>Runner Up ({hasil.index[1]})</div></div>", unsafe_allow_html=True)
-            with col_kpi3:
-                st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#e11d48;'>{hasil.iloc[-1]['Net Flow']:.3f}</div><div class='metric-label'>Terendah ({hasil.index[-1]})</div></div>", unsafe_allow_html=True)
-            with col_kpi4:
+                """, unsafe_allow_html=True)
+                
+                # === KPI CARDS ===
+                c1, c2, c3, c4 = st.columns(4)
+                with c1: st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df_to_process)}</div><div class='metric-label'>Alternatif</div></div>", unsafe_allow_html=True)
+                with c2: st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#2563eb;'>{hasil.iloc[1]['Net Flow']:.3f}</div><div class='metric-label'>Runner Up ({hasil.index[1]})</div></div>", unsafe_allow_html=True)
+                with c3: st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#e11d48;'>{hasil.iloc[-1]['Net Flow']:.3f}</div><div class='metric-label'>Terendah ({hasil.index[-1]})</div></div>", unsafe_allow_html=True)
                 gap = best_score - hasil.iloc[1]['Net Flow']
-                st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#10b981;'>+{gap:.3f}</div><div class='metric-label'>Gap Kemenangan</div></div>", unsafe_allow_html=True)
+                with c4: st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#10b981;'>+{gap:.3f}</div><div class='metric-label'>Gap Kemenangan</div></div>", unsafe_allow_html=True)
 
-            st.write("<br>", unsafe_allow_html=True)
+                st.write("<br>", unsafe_allow_html=True)
 
-            # Charts
-            c1, c2 = st.columns([1.5, 1])
-            with c1:
-                st.subheader("📊 Peringkat Performa")
-                df_chart = hasil.reset_index()
-                df_chart.columns = ['Alternatif', 'Net Flow', 'Leaving', 'Entering']
-                df_chart['Warna'] = ['#0f172a' if x == best_mine else '#94a3b8' for x in df_chart['Alternatif']]
-                fig = px.bar(df_chart, y='Alternatif', x='Net Flow', orientation='h', text_auto='.3f', color='Alternatif', color_discrete_sequence=df_chart['Warna'].tolist())
-                fig.update_layout(showlegend=False, height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with c2:
-                st.subheader("🕸️ Profil Juara")
-                winner_vals = ((df - df.min()) / (df.max() - df.min())).loc[best_mine].tolist()
-                fig_radar = go.Figure(go.Scatterpolar(r=winner_vals, theta=df.columns.tolist(), fill='toself', name=best_mine))
-                fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=400, margin=dict(l=40, r=40, t=20, b=20))
-                st.plotly_chart(fig_radar, use_container_width=True)
+                # === CHARTS ===
+                col1, col2 = st.columns([1.5, 1])
+                with col1:
+                    st.subheader("📊 Peringkat Performa")
+                    df_chart = hasil.reset_index()
+                    df_chart.columns = ['Alternatif', 'Net Flow', 'Leaving', 'Entering']
+                    df_chart['Warna'] = ['#0f172a' if x == best_mine else '#94a3b8' for x in df_chart['Alternatif']]
+                    fig = px.bar(df_chart, y='Alternatif', x='Net Flow', orientation='h', text_auto='.3f', color='Alternatif', color_discrete_sequence=df_chart['Warna'].tolist())
+                    fig.update_layout(showlegend=False, height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    st.subheader("🕸️ Profil Juara")
+                    winner_vals = ((df_to_process - df_to_process.min()) / (df_to_process.max() - df_to_process.min())).loc[best_mine].tolist()
+                    fig_radar = go.Figure(go.Scatterpolar(r=winner_vals, theta=df_to_process.columns.tolist(), fill='toself', name=best_mine))
+                    fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=400, margin=dict(l=40, r=40, t=20, b=20))
+                    st.plotly_chart(fig_radar, use_container_width=True)
 
-            # Bagian 3: Insight (Bottom)
-            st.write("<br>", unsafe_allow_html=True)
-            st.markdown(f"""
-            <div class="insight-box">
-                <div class="insight-title">Catatan & Rekomendasi untuk Manajemen</div>
-                <div class="insight-text">
-                    Berdasarkan hasil analisis komputasi menggunakan metode PROMETHEE II dengan parameter di atas, <b>{best_mine}</b> terpilih sebagai opsi paling optimal.
-                    <br><br>
-                    <ul>
-                        <li><b>Keunggulan Kompetitif:</b> IUP ini menunjukkan performa superior (dominan) terutama pada aspek fundamental: 
-                        <span class="strength-tag">{strengths[0]}</span>, <span class="strength-tag">{strengths[1]}</span>, dan <span class="strength-tag">{strengths[2]}</span>.</li>
-                        <br>
-                        <li><b>Area Perhatian (Risiko):</b> Manajemen perlu menyusun strategi mitigasi risiko pada aspek 
-                        <span class="weakness-tag">{weakness}</span>, dimana IUP ini memiliki nilai relatif lebih rendah dibandingkan kompetitor lainnya.</li>
-                    </ul>
+                # === INSIGHT BOX ===
+                st.write("<br>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="insight-box">
+                    <div class="insight-title">Catatan & Rekomendasi untuk Manajemen</div>
+                    <div class="insight-text">
+                        Berdasarkan hasil analisis, <b>{best_mine}</b> terpilih sebagai opsi paling optimal.
+                        <br><br>
+                        <ul>
+                            <li><b>Keunggulan Kompetitif:</b> Unggul pada aspek <span class="strength-tag">{strengths[0]}</span>, <span class="strength-tag">{strengths[1]}</span>, dan <span class="strength-tag">{strengths[2]}</span>.</li>
+                            <br>
+                            <li><b>Area Perhatian:</b> Perlu mitigasi risiko pada aspek <span class="weakness-tag">{weakness}</span>.</li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-            st.divider()
-            with st.expander("📋 Lihat Tabel Peringkat Lengkap"):
-                st.dataframe(hasil.style.background_gradient(cmap="Blues"), use_container_width=True)
+                st.divider()
+                with st.expander("📋 Lihat Tabel Lengkap"):
+                    st.dataframe(hasil.style.background_gradient(cmap="Blues"), use_container_width=True)
 
-    except Exception as e:
-        st.error(f"Error: {e}")
-
+        except Exception as e:
+            st.error(f"Error Proses: {e}")
