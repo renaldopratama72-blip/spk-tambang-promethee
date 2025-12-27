@@ -23,7 +23,7 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     .stApp { background-color: #f8f9fa; }
 
-    /* Insight Box (Posisi Baru di Bawah) */
+    /* Insight Box */
     .insight-box {
         background-color: #ffffff;
         border-left: 6px solid #2563eb;
@@ -150,8 +150,8 @@ with st.sidebar:
     st.markdown("### SPK Tambang")
     selected = option_menu(
         menu_title=None,
-        options=["Dashboard", "Data Input", "Tentang"],
-        icons=["speedometer2", "table", "info-circle"],
+        options=["Dashboard", "Data Input", "Panduan"],
+        icons=["speedometer2", "table", "book"],
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
@@ -171,7 +171,7 @@ with st.sidebar:
 # ==========================================
 
 if uploaded_file is None:
-    # Tampilan Awal (Landing Page)
+    # --- LANDING PAGE ---
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
@@ -216,16 +216,55 @@ elif selected == "Data Input":
     except Exception as e:
         st.error("File tidak valid atau belum diupload.")
 
-elif selected == "Tentang":
-    st.title("ℹ️ Tentang Aplikasi")
+elif selected == "Panduan":
+    st.title("ℹ️ Panduan & Spesifikasi Data")
     st.markdown("""
-    Aplikasi ini dibangun menggunakan metode **PROMETHEE II** (Preference Ranking Organization Method for Enrichment Evaluation).
-    **Fitur Utama:**
-    - Analisis Multi-Kriteria (14 Kriteria).
-    - Perbandingan Pairwise otomatis.
-    - Visualisasi Net Flow & Radar Chart.
+    Agar sistem dapat menghitung skor PROMETHEE II dengan akurat, mohon perhatikan spesifikasi data di bawah ini.
     """)
-    st.info("Dibuat khusus untuk Tesis MM Universitas Bakrie.")
+    
+    # --- Bagian 1: Kamus Data (Penjelasan C1-C14) ---
+    st.subheader("1. Kriteria Penilaian (Kamus Data)")
+    st.markdown("Data Excel Anda **wajib** memiliki kolom dengan kode kriteria berikut:")
+    
+    # Membuat DataFrame untuk tampilan Kamus Data yang rapi
+    dict_data = []
+    for k, v in KRITERIA_CONFIG.items():
+        arah = "Maksimal (Nilai Tinggi Lebih Baik)" if v['tipe'] == 'max' else "Minimal (Nilai Rendah Lebih Baik)"
+        dict_data.append({"Kode": k, "Nama Kriteria": v['nama'], "Sifat Kriteria": arah})
+    
+    df_kamus = pd.DataFrame(dict_data)
+    st.dataframe(
+        df_kamus.style.applymap(lambda x: 'color: red; font-weight:bold' if 'Minimal' in x else 'color: green', subset=['Sifat Kriteria']), 
+        use_container_width=True, 
+        hide_index=True
+    )
+    
+    # --- Bagian 2: Contoh Format Tabel ---
+    st.divider()
+    st.subheader("2. Format Tabel Excel (.xlsx)")
+    st.info("⚠️ **PENTING:** Judul Kolom (Header) harus menggunakan KODE (**C1, C2, dst**), bukan nama kriteria.")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Contoh Struktur Data yang Benar:**")
+        # Contoh Dummy Data
+        dummy_data = {
+            "Nama Alternatif": ["IUP Tambang A", "IUP Tambang B", "IUP Tambang C"],
+            "C1": [5000, 7500, 6000],
+            "C2": [8, 9, 7],
+            "C3": [15, 20, 18],
+            "C...": ["...", "...", "..."],
+            "C14": [90, 85, 88]
+        }
+        st.table(pd.DataFrame(dummy_data))
+    
+    with c2:
+        st.markdown("**Keterangan:**")
+        st.markdown("""
+        * **Kolom 1:** Nama Alternatif / Perusahaan Tambang.
+        * **Kolom C1 - C14:** Masukkan nilai numerik (angka).
+        * Pastikan tidak ada sel yang kosong (blank).
+        """)
 
 elif selected == "Dashboard":
     try:
@@ -236,7 +275,7 @@ elif selected == "Dashboard":
         kurang = [c for c in wajib if c not in df.columns]
         
         if kurang:
-            st.error(f"❌ Data Excel tidak valid. Kolom hilang: {kurang}")
+            st.error(f"❌ Data Excel tidak valid. Kolom berikut hilang: {kurang}. Silakan cek menu 'Panduan' untuk format yang benar.")
         else:
             # Hitung & Insight
             hasil = hitung_promethee(df)
@@ -244,12 +283,9 @@ elif selected == "Dashboard":
             best_score = hasil.iloc[0]['Net Flow']
             strengths, weakness = generate_insight(df, best_mine)
             
-            # =========================================
-            # BAGIAN 1: PARAMETER (Fitur Baru Diminta)
-            # =========================================
+            # Bagian 1: Parameter
             st.subheader("1. Parameter & Konfigurasi Model")
             with st.expander("ℹ️ Lihat Detail Bobot & Threshold (Q/P) yang Digunakan", expanded=False):
-                # Membuat DataFrame Parameter yang Rapi
                 param_data = []
                 for k, v in KRITERIA_CONFIG.items():
                     param_data.append({
@@ -271,7 +307,7 @@ elif selected == "Dashboard":
             st.divider()
             st.subheader("2. Hasil Analisis Keputusan")
 
-            # === HERO SECTION ===
+            # Hero Section
             st.markdown(f"""
             <div class="hero-winner">
                 <div class="hero-title">REKOMENDASI KEPUTUSAN TERBAIK</div>
@@ -282,7 +318,7 @@ elif selected == "Dashboard":
             </div>
             """, unsafe_allow_html=True)
             
-            # === KPI CARDS ===
+            # KPI Cards
             col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
             with col_kpi1:
                 st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df)}</div><div class='metric-label'>Jumlah Alternatif</div></div>", unsafe_allow_html=True)
@@ -296,7 +332,7 @@ elif selected == "Dashboard":
 
             st.write("<br>", unsafe_allow_html=True)
 
-            # === CHARTS ===
+            # Charts
             c1, c2 = st.columns([1.5, 1])
             with c1:
                 st.subheader("📊 Peringkat Performa")
@@ -314,9 +350,7 @@ elif selected == "Dashboard":
                 fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=400, margin=dict(l=40, r=40, t=20, b=20))
                 st.plotly_chart(fig_radar, use_container_width=True)
 
-            # =========================================
-            # BAGIAN 3: MANAGEMENT INSIGHT (Posisi Baru di Bawah)
-            # =========================================
+            # Bagian 3: Insight (Bottom)
             st.write("<br>", unsafe_allow_html=True)
             st.markdown(f"""
             <div class="insight-box">
