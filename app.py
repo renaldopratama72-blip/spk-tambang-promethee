@@ -63,9 +63,6 @@ st.markdown("""
         background: -webkit-linear-gradient(#eee, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
-    /* Rubrik Table Styling */
-    .rubrik-table { font-size: 0.9rem; }
-
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -75,7 +72,7 @@ st.markdown("""
 # ==========================================
 KRITERIA_CONFIG = {
     'C1':  {'nama': 'Skala Prod',     'tipe': 'max', 'bobot': 0.0225, 'q': 5,  'p': 20},
-    'C2':  {'nama': 'Kebutuhan',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
+    'C2':  {'nama': 'Kebutuhan Market',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
     'C3':  {'nama': 'Profitabilitas', 'tipe': 'max', 'bobot': 0.1440, 'q': 5,  'p': 20}, 
     'C4':  {'nama': 'COGS (Biaya)',   'tipe': 'min', 'bobot': 0.1845, 'q': 5,  'p': 20}, 
     'C5':  {'nama': 'Coal Supply',    'tipe': 'min', 'bobot': 0.0385, 'q': 5,  'p': 20}, 
@@ -90,7 +87,6 @@ KRITERIA_CONFIG = {
     'C14': {'nama': 'Relasi',         'tipe': 'max', 'bobot': 0.0300, 'q': 2,  'p': 10},
 }
 
-# Database Panduan Penilaian (Dari File Excel User)
 RUBRIK_PENILAIAN = {
     'C1': {'Low': 'Kapasitas Kecil (Cadangan Minim)', 'Mid': 'Kapasitas Sedang (5-10 Thn)', 'High': 'Kapasitas Besar (>10 Thn)'},
     'C2': {'Low': 'Sulit Dijual (Low Rank <3000)', 'Mid': 'Pasar Domestik (Std PLN)', 'High': 'Premium/Ekspor (>4500)'},
@@ -107,6 +103,18 @@ RUBRIK_PENILAIAN = {
     'C13': {'Low': 'Tidak Jelas / Spekulatif', 'Mid': 'Ada tapi Belum Detail', 'High': 'Matang & Terstruktur'},
     'C14': {'Low': 'Tidak Dikenal', 'Mid': 'Relasi Biasa', 'High': 'Relasi Kuat / Strategis'}
 }
+
+def get_rubrik_df():
+    data = []
+    for kode, desc in RUBRIK_PENILAIAN.items():
+        data.append({
+            "Kode": kode,
+            "Kriteria": KRITERIA_CONFIG[kode]['nama'],
+            "🔴 Rendah (0-49)": desc['Low'],
+            "🟡 Sedang (50-75)": desc['Mid'],
+            "🟢 Tinggi (76-99)": desc['High']
+        })
+    return pd.DataFrame(data)
 
 # ==========================================
 # 3. CORE LOGIC
@@ -169,12 +177,13 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
-    # Menu Navigasi
+    # KUNCI UTAMA AUTO-REDIRECT: Tambahkan parameter key='nav_menu'
     selected = option_menu(
         menu_title=None,
         options=["Dashboard", "Input Data", "Panduan Nilai"],
         icons=["speedometer2", "keyboard", "journal-check"],
         default_index=0,
+        key="nav_menu", # Ini penting agar bisa diubah dari kode
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
             "icon": {"color": "#2563eb", "font-size": "18px"}, 
@@ -185,7 +194,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Opsi Input Data
     st.markdown("**📂 Metode Input Data**")
     input_method = st.radio("Pilih Sumber:", ["Upload Excel", "Input Manual / Edit"], label_visibility="collapsed")
     
@@ -200,9 +208,8 @@ with st.sidebar:
 # 5. HALAMAN UTAMA
 # ==========================================
 
-# --- INISIALISASI SESSION STATE UNTUK DATA ---
+# --- INISIALISASI SESSION STATE ---
 if 'df_input' not in st.session_state:
-    # Template Default (Data Kosong)
     default_cols = ['Nama IUP'] + list(KRITERIA_CONFIG.keys())
     st.session_state.df_input = pd.DataFrame(columns=default_cols)
 
@@ -210,19 +217,17 @@ if 'df_input' not in st.session_state:
 if input_method == "Upload Excel" and uploaded_file is not None:
     try:
         temp_df = pd.read_excel(uploaded_file)
-        # Pastikan kolom pertama jadi index nanti, tapi di editor kita butuh kolomnya
         st.session_state.df_input = temp_df
     except:
         st.error("File tidak valid")
 elif input_method == "Input Manual / Edit" and st.session_state.df_input.empty:
-    # Jika manual dan kosong, buat 3 baris dummy
     dummy_data = {'Nama IUP': ['IUP A', 'IUP B', 'IUP C']}
     for k in KRITERIA_CONFIG.keys():
-        dummy_data[k] = [0, 0, 0] # Isi 0 dulu
+        dummy_data[k] = [0, 0, 0] 
     st.session_state.df_input = pd.DataFrame(dummy_data)
 
 
-# --- HALAMAN: PANDUAN NILAI (REQ USER) ---
+# --- HALAMAN: PANDUAN NILAI ---
 if selected == "Panduan Nilai":
     st.title("📖 Panduan Parameter Penilaian (0-100)")
     st.markdown("""
@@ -230,18 +235,7 @@ if selected == "Panduan Nilai":
     Rentang nilai dibagi menjadi 3 kategori: **Rendah (0-49)**, **Menengah (50-75)**, dan **Tinggi (76-99)**.
     """)
     
-    # Membuat Tabel Rubrik Rapi
-    rubrik_data = []
-    for kode, desc in RUBRIK_PENILAIAN.items():
-        rubrik_data.append({
-            "Kode": kode,
-            "Kriteria": KRITERIA_CONFIG[kode]['nama'],
-            "🔴 Rendah (0-49)": desc['Low'],
-            "🟡 Sedang (50-75)": desc['Mid'],
-            "🟢 Tinggi (76-99)": desc['High']
-        })
-    
-    df_rubrik = pd.DataFrame(rubrik_data)
+    df_rubrik = get_rubrik_df()
     st.dataframe(
         df_rubrik, 
         use_container_width=True, 
@@ -255,15 +249,27 @@ if selected == "Panduan Nilai":
     st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
 
 
-# --- HALAMAN: INPUT DATA (LIVE EDITOR) ---
+# --- HALAMAN: INPUT DATA (AUTO REDIRECT) ---
 elif selected == "Input Data":
     st.title("📝 Input & Edit Data")
-    st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung. Berguna untuk simulasi: *'Bagaimana jika IUP A perizinannya diperbaiki?'*")
+    st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung untuk melakukan simulasi.")
     
+    # === POP UP PANDUAN (EXPANDER) ===
+    with st.expander("📖 Buka Panduan Penilaian (Contekan)", expanded=False):
+        st.info("👇 **Panduan Pengisian Skor (0-100)**. Klik header kolom untuk mengurutkan.")
+        df_popup = get_rubrik_df()
+        st.dataframe(
+            df_popup,
+            use_container_width=True, 
+            hide_index=True,
+            height=300
+        )
+    
+    # === EDITOR UTAMA ===
+    st.markdown("### Tabel Input")
     col_input, col_info = st.columns([3, 1])
     
     with col_input:
-        # EDITOR DATA
         edited_df = st.data_editor(
             st.session_state.df_input,
             num_rows="dynamic",
@@ -271,30 +277,32 @@ elif selected == "Input Data":
             height=450,
             key="editor"
         )
-        
-        # Simpan perubahan ke session state
         st.session_state.df_input = edited_df
 
     with col_info:
         st.warning("⚠️ **Perhatian**")
         st.markdown("""
-        Pastikan format kolom:
-        1. **Kolom 1**: Nama IUP
-        2. **Kolom C1-C14**: Angka Skor (0-100)
+        1. **Kolom C1-C14**: Isi angka 0-100.
+        2. **Gunakan Panduan** di atas jika bingung mengisi nilai.
         """)
-        st.markdown("Lihat menu **Panduan Nilai** untuk arti skor.")
-
-    if st.button("Simpan & Lihat Hasil di Dashboard ➡️", type="primary"):
-        st.success("Data tersimpan! Silakan pindah ke menu Dashboard.")
+        
+        # === TOMBOL SIMPAN & REDIRECT ===
+        if st.button("💾 Simpan & Analisis ➡️", type="primary"):
+            # 1. Simpan Data (Sudah otomatis via session state, tapi kita pastikan)
+            st.session_state.df_input = edited_df
+            
+            # 2. Trik Auto-Redirect: Ubah value menu
+            st.session_state["nav_menu"] = "Dashboard"
+            
+            # 3. Rerun aplikasi agar pindah halaman
+            st.rerun()
 
 
 # --- HALAMAN: DASHBOARD ---
 elif selected == "Dashboard":
-    # Cek apakah ada data
     df_to_process = st.session_state.df_input.copy()
     
     if df_to_process.empty or len(df_to_process) < 2:
-        # TAMPILAN AWAL (JIKA DATA KOSONG)
         st.markdown("<br>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
@@ -302,28 +310,23 @@ elif selected == "Dashboard":
                 "https://images.squarespace-cdn.com/content/v1/5acda2f4c258b4bd2d14dca2/1653447668933-C9BBM4LAGE1BBEINI7FP/Perusahaan+Tambang+di+Bursa+Efek+Indonesia.jpg?format=2500w",
                 caption="Sektor Pertambangan Indonesia", use_container_width=True
             )
-            st.info("👈 Data masih kosong. Silakan Upload Excel atau Input Manual di menu sebelah kiri.")
+            st.info("👈 Data masih kosong. Silakan ke menu **Input Data** untuk mengisi nilai.")
             
     else:
-        # PROSES DATA DARI EDITOR
         try:
-            # Set kolom pertama sebagai Index (Nama IUP)
             df_to_process = df_to_process.set_index(df_to_process.columns[0])
-            
-            # Validasi Kolom
             wajib = list(KRITERIA_CONFIG.keys())
             kurang = [c for c in wajib if c not in df_to_process.columns]
             
             if kurang:
                 st.error(f"❌ Data belum lengkap. Kolom hilang: {kurang}")
             else:
-                # HITUNG PROMETHEE
                 hasil = hitung_promethee(df_to_process)
                 best_mine = hasil.index[0]
                 best_score = hasil.iloc[0]['Net Flow']
                 strengths, weakness = generate_insight(df_to_process, best_mine)
                 
-                # === 1. PARAMETER ===
+                # Parameter
                 st.subheader("1. Parameter & Konfigurasi Model")
                 with st.expander("ℹ️ Lihat Detail Bobot & Threshold", expanded=False):
                     param_data = []
@@ -337,7 +340,7 @@ elif selected == "Dashboard":
                 st.divider()
                 st.subheader("2. Hasil Analisis Keputusan")
 
-                # === HERO WINNER ===
+                # Hero
                 st.markdown(f"""
                 <div class="hero-winner">
                     <div class="hero-title">REKOMENDASI KEPUTUSAN TERBAIK</div>
@@ -348,7 +351,7 @@ elif selected == "Dashboard":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # === KPI CARDS ===
+                # KPI
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df_to_process)}</div><div class='metric-label'>Alternatif</div></div>", unsafe_allow_html=True)
                 with c2: st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#2563eb;'>{hasil.iloc[1]['Net Flow']:.3f}</div><div class='metric-label'>Runner Up ({hasil.index[1]})</div></div>", unsafe_allow_html=True)
@@ -358,7 +361,7 @@ elif selected == "Dashboard":
 
                 st.write("<br>", unsafe_allow_html=True)
 
-                # === CHARTS ===
+                # Charts
                 col1, col2 = st.columns([1.5, 1])
                 with col1:
                     st.subheader("📊 Peringkat Performa")
@@ -376,7 +379,7 @@ elif selected == "Dashboard":
                     fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=400, margin=dict(l=40, r=40, t=20, b=20))
                     st.plotly_chart(fig_radar, use_container_width=True)
 
-                # === INSIGHT BOX ===
+                # Insight Box
                 st.write("<br>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div class="insight-box">
