@@ -72,18 +72,18 @@ st.markdown("""
 # ==========================================
 KRITERIA_CONFIG = {
     'C1':  {'nama': 'Skala Prod',     'tipe': 'max', 'bobot': 0.0225, 'q': 5,  'p': 20},
-    'C2':  {'nama': 'Kebutuhan',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
+    'C2':  {'nama': 'Kebutuhan Market',      'tipe': 'max', 'bobot': 0.1035, 'q': 5,  'p': 20},
     'C3':  {'nama': 'Profitabilitas', 'tipe': 'max', 'bobot': 0.1440, 'q': 5,  'p': 20}, 
     'C4':  {'nama': 'COGS (Biaya)',   'tipe': 'min', 'bobot': 0.1845, 'q': 5,  'p': 20}, 
-    'C5':  {'nama': 'Coal Supply',    'tipe': 'min', 'bobot': 0.0385, 'q': 5,  'p': 20}, 
+    'C5':  {'nama': 'Coal Supply Chain',    'tipe': 'min', 'bobot': 0.0385, 'q': 5,  'p': 20}, 
     'C6':  {'nama': 'Perizinan',      'tipe': 'max', 'bobot': 0.1155, 'q': 2,  'p': 10},
     'C7':  {'nama': 'Kondisi Geo',    'tipe': 'max', 'bobot': 0.1960, 'q': 5,  'p': 20},
     'C8':  {'nama': 'RTRW',           'tipe': 'max', 'bobot': 0.0090, 'q': 2,  'p': 10},
-    'C9':  {'nama': 'Karakteristik',  'tipe': 'max', 'bobot': 0.0255, 'q': 2,  'p': 10},
-    'C10': {'nama': 'Sosial Mas',     'tipe': 'max', 'bobot': 0.0420, 'q': 2,  'p': 10},
-    'C11': {'nama': 'Permit Ling',    'tipe': 'max', 'bobot': 0.0750, 'q': 2,  'p': 10},
-    'C12': {'nama': 'Sektor Bisnis',  'tipe': 'max', 'bobot': 0.0035, 'q': 2,  'p': 10},
-    'C13': {'nama': 'Rencana P',      'tipe': 'max', 'bobot': 0.0165, 'q': 2,  'p': 10},
+    'C9':  {'nama': 'Karakteristik Geologi',  'tipe': 'max', 'bobot': 0.0255, 'q': 2,  'p': 10},
+    'C10': {'nama': 'Sosial Masyarakat',     'tipe': 'max', 'bobot': 0.0420, 'q': 2,  'p': 10},
+    'C11': {'nama': 'Permit Lingkungan',    'tipe': 'max', 'bobot': 0.0750, 'q': 2,  'p': 10},
+    'C12': {'nama': 'Sektor Bisnis Lainnya',  'tipe': 'max', 'bobot': 0.0035, 'q': 2,  'p': 10},
+    'C13': {'nama': 'Rencana Perusahaan',      'tipe': 'max', 'bobot': 0.0165, 'q': 2,  'p': 10},
     'C14': {'nama': 'Relasi',         'tipe': 'max', 'bobot': 0.0300, 'q': 2,  'p': 10},
 }
 
@@ -171,23 +171,23 @@ def generate_insight(df, winner_name):
     return top_3_names, weak_1_name
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION (FIXED)
+# 4. SIDEBAR NAVIGATION (FIXED LOGIC)
 # ==========================================
+# Inisialisasi State Halaman
+if 'page_index' not in st.session_state:
+    st.session_state['page_index'] = 0  # Default ke Dashboard (0)
+
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
-    # ⚠️ BAGIAN KRUSIAL UNTUK PINDAH HALAMAN
-    # Kita beri nama key="main_nav". Ini agar tombol bisa mengubah nilai navigasi ini.
-    if 'main_nav' not in st.session_state:
-        st.session_state['main_nav'] = 'Dashboard'
-
-    selected = option_menu(
+    # KUNCI 1: Gunakan default_index dari session_state
+    # KUNCI 2: JANGAN gunakan parameter 'key' di option_menu agar tidak konflik
+    selected_option = option_menu(
         menu_title=None,
         options=["Dashboard", "Input Data", "Panduan Nilai"],
         icons=["speedometer2", "keyboard", "journal-check"],
-        default_index=0,
-        key="main_nav", # <--- INI KUNCINYA. Key menghubungkan menu dengan Session State.
+        default_index=st.session_state['page_index'], 
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
             "icon": {"color": "#2563eb", "font-size": "18px"}, 
@@ -195,6 +195,14 @@ with st.sidebar:
             "nav-link-selected": {"background-color": "#2563eb"},
         }
     )
+
+    # Logika Sinkronisasi Manual (Jika user klik menu sidebar)
+    if selected_option == "Dashboard":
+        st.session_state['page_index'] = 0
+    elif selected_option == "Input Data":
+        st.session_state['page_index'] = 1
+    elif selected_option == "Panduan Nilai":
+        st.session_state['page_index'] = 2
     
     st.divider()
     
@@ -212,7 +220,7 @@ with st.sidebar:
 # 5. HALAMAN UTAMA
 # ==========================================
 
-# --- INISIALISASI SESSION STATE ---
+# --- INISIALISASI DATA ---
 if 'df_input' not in st.session_state:
     default_cols = ['Nama IUP'] + list(KRITERIA_CONFIG.keys())
     st.session_state.df_input = pd.DataFrame(columns=default_cols)
@@ -232,7 +240,7 @@ elif input_method == "Input Manual / Edit" and st.session_state.df_input.empty:
 
 
 # --- HALAMAN: PANDUAN NILAI ---
-if selected == "Panduan Nilai":
+if selected_option == "Panduan Nilai":
     st.title("📖 Panduan Parameter Penilaian (0-100)")
     st.markdown("""
     Gunakan tabel di bawah ini sebagai acuan saat mengisi skor pada menu **Input Data**.
@@ -253,8 +261,8 @@ if selected == "Panduan Nilai":
     st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
 
 
-# --- HALAMAN: INPUT DATA (AUTO REDIRECT FIX) ---
-elif selected == "Input Data":
+# --- HALAMAN: INPUT DATA (DENGAN AUTO-REDIRECT FIX) ---
+elif selected_option == "Input Data":
     st.title("📝 Input & Edit Data")
     st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung untuk melakukan simulasi.")
     
@@ -285,20 +293,20 @@ elif selected == "Input Data":
         2. **Gunakan Panduan** jika bingung.
         """)
         
-        # === TOMBOL SIMPAN & PINDAH HALAMAN ===
+        # === TOMBOL SIMPAN & REDIRECT ===
         if st.button("💾 Simpan & Lihat Dashboard ➡️", type="primary"):
-            # 1. Simpan data (Data editor otomatis tersimpan ke session, kita tegaskan saja)
+            # 1. Pastikan data tersimpan
             st.session_state.df_input = edited_df
             
-            # 2. UBAH NAVIGASI KE DASHBOARD SECARA PAKSA
-            st.session_state["main_nav"] = "Dashboard"
+            # 2. PAKSA STATE INDEX KE 0 (DASHBOARD)
+            st.session_state['page_index'] = 0 
             
-            # 3. RELOAD APLIKASI
+            # 3. RERUN AGAR SIDEBAR MEMBACA INDEX 0
             st.rerun()
 
 
 # --- HALAMAN: DASHBOARD ---
-elif selected == "Dashboard":
+elif selected_option == "Dashboard":
     df_to_process = st.session_state.df_input.copy()
     
     if df_to_process.empty or len(df_to_process) < 2:
