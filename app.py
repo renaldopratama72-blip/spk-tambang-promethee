@@ -171,12 +171,13 @@ def generate_insight(df, winner_name):
     return top_3_names, weak_1_name
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION
+# 4. SIDEBAR NAVIGATION (MANUAL MODE)
 # ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
+    # MURNI MANUAL: Tidak ada key, tidak ada default_index yang aneh-aneh
     selected_option = option_menu(
         menu_title=None,
         options=["Dashboard", "Input Data", "Panduan Nilai"],
@@ -247,7 +248,7 @@ if selected_option == "Panduan Nilai":
     st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
 
 
-# --- HALAMAN: INPUT DATA (TANPA REDIRECT) ---
+# --- HALAMAN: INPUT DATA (MURNI TANPA REDIRECT) ---
 elif selected_option == "Input Data":
     st.title("📝 Input & Edit Data")
     st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung untuk melakukan simulasi.")
@@ -270,7 +271,7 @@ elif selected_option == "Input Data":
             height=450,
             key="editor"
         )
-        # Otomatis update session state saat diketik
+        # Update State realtime
         st.session_state.df_input = edited_df
 
     with col_info:
@@ -280,10 +281,10 @@ elif selected_option == "Input Data":
         2. **Gunakan Panduan** jika bingung.
         """)
         
-        # === TOMBOL SIMPAN BIASA ===
+        # === TOMBOL SIMPAN (CLEAN) ===
         if st.button("💾 Simpan Data", type="primary"):
             st.session_state.df_input = edited_df
-            st.success("✅ Data berhasil disimpan! Silakan klik menu **Dashboard** di kiri untuk melihat hasil analisis.")
+            st.success("Data Tersimpan! Klik Dashboard di menu kiri untuk melihat hasil.")
 
 
 # --- HALAMAN: DASHBOARD ---
