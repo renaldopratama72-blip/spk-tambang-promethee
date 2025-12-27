@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_option_menu import option_menu # Wajib update requirements.txt
+from streamlit_option_menu import option_menu
 import time
 
 # ==========================================
@@ -30,6 +30,21 @@ st.markdown("""
     .stApp {
         background-color: #f8f9fa;
     }
+
+    /* Styling Insight Box (Manajemen) */
+    .insight-box {
+        background-color: #ffffff;
+        border-left: 6px solid #2563eb;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-top: 20px;
+        margin-bottom: 30px;
+    }
+    .insight-title { font-weight: 800; color: #1e293b; font-size: 1.1rem; margin-bottom: 10px; }
+    .insight-text { color: #475569; line-height: 1.6; }
+    .strength-tag { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.9em; }
+    .weakness-tag { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.9em; }
 
     /* Styling Kartu Metrik */
     .metric-card {
@@ -63,7 +78,7 @@ st.markdown("""
         color: white;
         padding: 40px;
         border-radius: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         position: relative;
         overflow: hidden;
@@ -160,6 +175,35 @@ def hitung_promethee(df):
     }, index=alternatives)
     return hasil.sort_values(by='Net Flow', ascending=False)
 
+def generate_insight(df, winner_name):
+    """Menganalisis data mentah untuk mencari kekuatan/kelemahan juara"""
+    df_norm = df.copy()
+    # Normalisasi untuk mencari kekuatan relatif
+    for col in df_norm.columns:
+        if col in KRITERIA_CONFIG:
+            is_max = KRITERIA_CONFIG[col]['tipe'] == 'max'
+            if is_max:
+                if (df[col].max() - df[col].min()) != 0:
+                    df_norm[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+                else:
+                    df_norm[col] = 0
+            else: # Cost Criteria
+                if (df[col].max() - df[col].min()) != 0:
+                    df_norm[col] = (df[col].max() - df[col]) / (df[col].max() - df[col].min())
+                else:
+                    df_norm[col] = 0
+    
+    winner_scores = df_norm.loc[winner_name]
+    # Ambil 3 Kriteria dengan skor normalisasi tertinggi
+    top_3 = winner_scores.nlargest(3).index.tolist()
+    top_3_names = [f"{KRITERIA_CONFIG[c]['nama']}" for c in top_3]
+    
+    # Ambil 1 Kriteria terlemah
+    weak_1 = winner_scores.nsmallest(1).index.tolist()
+    weak_1_name = KRITERIA_CONFIG[weak_1[0]]['nama'] if weak_1 else "Tidak ada"
+    
+    return top_3_names, weak_1_name
+
 # ==========================================
 # 4. SIDEBAR NAVIGATION (MODERN)
 # ==========================================
@@ -202,13 +246,20 @@ if uploaded_file is None:
         st.markdown(
             """
             <div style="text-align: center; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-                <h1 style="color:#2563eb;">Selamat Datang! 👋</h1>
-                <p style="font-size: 1.1rem; color: #666;">
-                    Sistem Pendukung Keputusan Pemilihan IUP Terbaik.<br>
-                    Silakan upload file Excel di menu sebelah kiri untuk memulai analisis.
+                <h1 style="color:#2563eb; font-weight:800;">Selamat Datang! 👋</h1>
+                <p style="font-size: 1.1rem; color: #666; margin-bottom: 30px;">
+                    <b>Sistem Pendukung Keputusan Pemilihan IUP Terbaik</b><br>
+                    Metode PROMETHEE II untuk Analisis Strategis Tambang.
                 </p>
-                <br>
-                <img src="https://media.giphy.com/media/JQXaNxTb94V3x62g98/giphy.gif" width="100%" style="border-radius:10px;">
+                
+                <img src="https://images.unsplash.com/photo-1587483166702-bf9aa66bd791?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" 
+                     alt="Active Open Pit Mine" 
+                     width="100%" 
+                     style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                
+                <p style="margin-top: 25px; color: #475569; font-size: 0.95rem;">
+                    👈 Silakan <b>upload file data Excel (.xlsx)</b> pada menu di sebelah kiri untuk memulai analisis.
+                </p>
             </div>
             """, unsafe_allow_html=True
         )
@@ -260,6 +311,9 @@ elif selected == "Dashboard":
             best_mine = hasil.index[0]
             best_score = hasil.iloc[0]['Net Flow']
             
+            # Analisis Naratif Otomatis (Management Insight)
+            strengths, weakness = generate_insight(df, best_mine)
+            
             # === HEADER JUARA (THE WOW MOMENT) ===
             st.markdown(f"""
             <div class="hero-winner">
@@ -267,6 +321,26 @@ elif selected == "Dashboard":
                 <div class="hero-name">{best_mine}</div>
                 <div style="font-size: 1.2rem; margin-top: 10px;">
                     💎 Skor Net Flow: <b>{best_score:.4f}</b> | Status: <span style="background: #2ecc71; padding: 2px 10px; border-radius: 5px; font-size: 0.9rem;">Sangat Direkomendasikan</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # === 💡 MANAGEMENT INSIGHTS (KOTAK PENJELASAN) ===
+            st.markdown(f"""
+            <div class="insight-box">
+                <div class="insight-title">📝 Catatan & Rekomendasi untuk Manajemen</div>
+                <div class="insight-text">
+                    Berdasarkan hasil analisis komputasi menggunakan metode PROMETHEE II, <b>{best_mine}</b> terpilih sebagai opsi paling optimal 
+                    dibandingkan alternatif lainnya. Keputusan ini didasarkan pada performa Net Flow positif yang dominan.
+                    <br><br>
+                    <ul>
+                        <li><b>Keunggulan Kompetitif:</b> {best_mine} menunjukkan performa superior terutama pada aspek 
+                        <span class="strength-tag">{strengths[0]}</span>, <span class="strength-tag">{strengths[1]}</span>, dan <span class="strength-tag">{strengths[2]}</span>.
+                        Hal ini mengindikasikan bahwa IUP ini sangat kuat secara fundamental operasional/bisnis.</li>
+                        <br>
+                        <li><b>Area Perhatian (Risiko):</b> Meskipun unggul secara keseluruhan, manajemen perlu memitigasi risiko pada aspek 
+                        <span class="weakness-tag">{weakness}</span> dimana {best_mine} memiliki nilai yang relatif lebih rendah dibanding kompetitor.</li>
+                    </ul>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -325,10 +399,9 @@ elif selected == "Dashboard":
                 
             with col_chart2:
                 st.subheader("🕸️ Profil Juara (Radar Chart)")
-                # Radar Chart Logic (Normalisasi Data Juara vs Rata-rata)
-                # Ambil data raw Juara
+                # Radar Chart Logic
                 winner_data = df.loc[best_mine].values
-                # Normalisasi min-max sederhana untuk visualisasi (agar skalanya 0-1)
+                # Normalisasi min-max untuk visualisasi
                 df_norm = (df - df.min()) / (df.max() - df.min())
                 winner_vals = df_norm.loc[best_mine].tolist()
                 categories = df.columns.tolist()
