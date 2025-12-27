@@ -171,23 +171,17 @@ def generate_insight(df, winner_name):
     return top_3_names, weak_1_name
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION (FIXED LOGIC)
+# 4. SIDEBAR NAVIGATION
 # ==========================================
-# Inisialisasi State Halaman
-if 'page_index' not in st.session_state:
-    st.session_state['page_index'] = 0  # Default ke Dashboard (0)
-
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
-    # KUNCI 1: Gunakan default_index dari session_state
-    # KUNCI 2: JANGAN gunakan parameter 'key' di option_menu agar tidak konflik
     selected_option = option_menu(
         menu_title=None,
         options=["Dashboard", "Input Data", "Panduan Nilai"],
         icons=["speedometer2", "keyboard", "journal-check"],
-        default_index=st.session_state['page_index'], 
+        default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "#f0f2f6"},
             "icon": {"color": "#2563eb", "font-size": "18px"}, 
@@ -195,14 +189,6 @@ with st.sidebar:
             "nav-link-selected": {"background-color": "#2563eb"},
         }
     )
-
-    # Logika Sinkronisasi Manual (Jika user klik menu sidebar)
-    if selected_option == "Dashboard":
-        st.session_state['page_index'] = 0
-    elif selected_option == "Input Data":
-        st.session_state['page_index'] = 1
-    elif selected_option == "Panduan Nilai":
-        st.session_state['page_index'] = 2
     
     st.divider()
     
@@ -261,7 +247,7 @@ if selected_option == "Panduan Nilai":
     st.info("💡 **Tips:** Semakin tinggi skor, semakin 'Ideal' kondisi tersebut menurut preferensi perusahaan.")
 
 
-# --- HALAMAN: INPUT DATA (DENGAN AUTO-REDIRECT FIX) ---
+# --- HALAMAN: INPUT DATA (TANPA REDIRECT) ---
 elif selected_option == "Input Data":
     st.title("📝 Input & Edit Data")
     st.markdown("Anda bisa mengubah angka di tabel bawah ini secara langsung untuk melakukan simulasi.")
@@ -284,6 +270,7 @@ elif selected_option == "Input Data":
             height=450,
             key="editor"
         )
+        # Otomatis update session state saat diketik
         st.session_state.df_input = edited_df
 
     with col_info:
@@ -293,16 +280,10 @@ elif selected_option == "Input Data":
         2. **Gunakan Panduan** jika bingung.
         """)
         
-        # === TOMBOL SIMPAN & REDIRECT ===
-        if st.button("💾 Simpan & Lihat Dashboard ➡️", type="primary"):
-            # 1. Pastikan data tersimpan
+        # === TOMBOL SIMPAN BIASA ===
+        if st.button("💾 Simpan Data", type="primary"):
             st.session_state.df_input = edited_df
-            
-            # 2. PAKSA STATE INDEX KE 0 (DASHBOARD)
-            st.session_state['page_index'] = 0 
-            
-            # 3. RERUN AGAR SIDEBAR MEMBACA INDEX 0
-            st.rerun()
+            st.success("✅ Data berhasil disimpan! Silakan klik menu **Dashboard** di kiri untuk melihat hasil analisis.")
 
 
 # --- HALAMAN: DASHBOARD ---
