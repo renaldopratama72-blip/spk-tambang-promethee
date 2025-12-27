@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS (MOBILE FRIENDLY) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -43,6 +43,7 @@ st.markdown("""
         background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eef0f2;
         text-align: center; transition: transform 0.2s;
+        height: 100%; /* Agar tinggi sama */
     }
     .metric-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
     .metric-value { font-size: 2rem; font-weight: 800; color: #1e293b; }
@@ -61,6 +62,16 @@ st.markdown("""
     .hero-name {
         font-size: 3.5rem; font-weight: 800; margin: 10px 0;
         background: -webkit-linear-gradient(#eee, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* === MOBILE RESPONSIVE TWEAKS === */
+    @media only screen and (max-width: 600px) {
+        .hero-name { font-size: 2.2rem !important; } /* Kecilkan font Judul di HP */
+        .hero-winner { padding: 20px !important; }
+        .metric-value { font-size: 1.5rem !important; }
+        .metric-card { padding: 15px !important; margin-bottom: 10px; }
+        .insight-box { padding: 15px !important; }
+        div[data-testid="column"] { width: 100% !important; flex: 1 1 auto !important; min-width: auto !important; }
     }
 
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -171,13 +182,13 @@ def generate_insight(df, winner_name):
     return top_3_names, weak_1_name
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION (MANUAL MODE)
+# 4. SIDEBAR NAVIGATION
 # ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2040/2040504.png", width=70)
     st.markdown("### SPK Tambang")
     
-    # MURNI MANUAL: Tidak ada key, tidak ada default_index yang aneh-aneh
+    # MANUAL MODE
     selected_option = option_menu(
         menu_title=None,
         options=["Dashboard", "Input Data", "Panduan Nilai"],
@@ -228,7 +239,7 @@ elif input_method == "Input Manual / Edit" and st.session_state.df_input.empty:
 
 # --- HALAMAN: PANDUAN NILAI ---
 if selected_option == "Panduan Nilai":
-    st.title("📖 Panduan Parameter Penilaian (0-100)")
+    st.title("📖 Panduan Parameter")
     st.markdown("""
     Gunakan tabel di bawah ini sebagai acuan saat mengisi skor pada menu **Input Data**.
     Rentang nilai dibagi menjadi 3 kategori: **Rendah (0-49)**, **Menengah (50-75)**, dan **Tinggi (76-99)**.
@@ -261,6 +272,8 @@ elif selected_option == "Input Data":
     
     # === EDITOR UTAMA ===
     st.markdown("### Tabel Input")
+    
+    # Logic Column: Di HP dia akan stack, di Desktop dia split
     col_input, col_info = st.columns([3, 1])
     
     with col_input:
@@ -340,7 +353,7 @@ elif selected_option == "Dashboard":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # KPI
+                # KPI: Menggunakan st.columns biasa, tapi CSS akan handle stacking di Mobile
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df_to_process)}</div><div class='metric-label'>Alternatif</div></div>", unsafe_allow_html=True)
                 with c2: st.markdown(f"<div class='metric-card'><div class='metric-value' style='color:#2563eb;'>{hasil.iloc[1]['Net Flow']:.3f}</div><div class='metric-label'>Runner Up ({hasil.index[1]})</div></div>", unsafe_allow_html=True)
