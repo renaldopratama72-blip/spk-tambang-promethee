@@ -166,16 +166,15 @@ with st.sidebar:
     st.caption("Developed by **Renaldo Pratama**\nMM Universitas Bakrie")
 
 # ==========================================
-# 5. HALAMAN UTAMA (DIPERBAIKI)
+# 5. HALAMAN UTAMA (FINAL IMAGE FIX)
 # ==========================================
 
 if uploaded_file is None:
-    # --- HALAMAN DEPAN (FIXED IMAGE) ---
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     
     with c2:
-        # 1. Judul & Teks
+        # 1. Judul
         st.markdown(
             """
             <div style="text-align: center; margin-bottom: 20px;">
@@ -188,13 +187,14 @@ if uploaded_file is None:
             """, unsafe_allow_html=True
         )
         
-        # 2. Gambar (Menggunakan st.image - LEBIH AMAN)
+        # 2. Gambar Baru (Tambang BEI)
         st.image(
-            "https://images.unsplash.com/photo-1587483166702-bf9aa66bd791?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80",
+            "https://images.squarespace-cdn.com/content/v1/5acda2f4c258b4bd2d14dca2/1653447668933-C9BBM4LAGE1BBEINI7FP/Perusahaan+Tambang+di+Bursa+Efek+Indonesia.jpg?format=2500w",
+            caption="Ilustrasi: Sektor Pertambangan di Indonesia",
             use_container_width=True
         )
         
-        # 3. Footer Text
+        # 3. Footer
         st.markdown(
             """
             <div style="text-align: center; margin-top: 25px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
