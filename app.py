@@ -16,27 +16,28 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS (The "Wow" Factor) ---
+# --- CUSTOM CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     .stApp { background-color: #f8f9fa; }
 
-    /* Insight Box */
+    /* Insight Box (Posisi Baru di Bawah) */
     .insight-box {
         background-color: #ffffff;
         border-left: 6px solid #2563eb;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-top: 20px;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        margin-top: 30px;
         margin-bottom: 30px;
     }
-    .insight-title { font-weight: 800; color: #1e293b; font-size: 1.1rem; margin-bottom: 10px; }
-    .insight-text { color: #475569; line-height: 1.6; }
-    .strength-tag { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.9em; }
-    .weakness-tag { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.9em; }
+    .insight-title { font-weight: 800; color: #1e293b; font-size: 1.2rem; margin-bottom: 15px; display: flex; align-items: center; }
+    .insight-title::before { content: "📝"; margin-right: 10px; font-size: 1.4rem; }
+    .insight-text { color: #475569; line-height: 1.7; font-size: 1.05rem; }
+    .strength-tag { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.95em; border: 1px solid #bbf7d0; }
+    .weakness-tag { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.95em; border: 1px solid #fecaca; }
 
     /* Kartu Metrik */
     .metric-card {
@@ -166,15 +167,14 @@ with st.sidebar:
     st.caption("Developed by **Renaldo Pratama**\nMM Universitas Bakrie")
 
 # ==========================================
-# 5. HALAMAN UTAMA (FINAL IMAGE FIX)
+# 5. HALAMAN UTAMA
 # ==========================================
 
 if uploaded_file is None:
+    # Tampilan Awal (Landing Page)
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
-    
     with c2:
-        # 1. Judul
         st.markdown(
             """
             <div style="text-align: center; margin-bottom: 20px;">
@@ -186,15 +186,11 @@ if uploaded_file is None:
             </div>
             """, unsafe_allow_html=True
         )
-        
-        # 2. Gambar Baru (Tambang BEI)
         st.image(
             "https://images.squarespace-cdn.com/content/v1/5acda2f4c258b4bd2d14dca2/1653447668933-C9BBM4LAGE1BBEINI7FP/Perusahaan+Tambang+di+Bursa+Efek+Indonesia.jpg?format=2500w",
             caption="Ilustrasi: Sektor Pertambangan di Indonesia",
             use_container_width=True
         )
-        
-        # 3. Footer
         st.markdown(
             """
             <div style="text-align: center; margin-top: 25px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
@@ -236,7 +232,6 @@ elif selected == "Dashboard":
         df = pd.read_excel(uploaded_file)
         df = df.set_index(df.columns[0])
         
-        # Validasi
         wajib = list(KRITERIA_CONFIG.keys())
         kurang = [c for c in wajib if c not in df.columns]
         
@@ -249,6 +244,33 @@ elif selected == "Dashboard":
             best_score = hasil.iloc[0]['Net Flow']
             strengths, weakness = generate_insight(df, best_mine)
             
+            # =========================================
+            # BAGIAN 1: PARAMETER (Fitur Baru Diminta)
+            # =========================================
+            st.subheader("1. Parameter & Konfigurasi Model")
+            with st.expander("ℹ️ Lihat Detail Bobot & Threshold (Q/P) yang Digunakan", expanded=False):
+                # Membuat DataFrame Parameter yang Rapi
+                param_data = []
+                for k, v in KRITERIA_CONFIG.items():
+                    param_data.append({
+                        "Kode": k,
+                        "Nama Kriteria": v['nama'],
+                        "Tipe": v['tipe'].upper(),
+                        "Bobot": f"{v['bobot']:.4f}",
+                        "Q (Indifference)": v['q'],
+                        "P (Preference)": v['p']
+                    })
+                param_df = pd.DataFrame(param_data)
+                st.dataframe(
+                    param_df.style.applymap(lambda x: 'background-color: #e2e8f0' if x in ['MIN'] else '', subset=['Tipe']),
+                    use_container_width=True, 
+                    hide_index=True
+                )
+                st.caption("*Catatan: Tipe 'MIN' berarti semakin kecil nilai semakin baik (contoh: Biaya).")
+            
+            st.divider()
+            st.subheader("2. Hasil Analisis Keputusan")
+
             # === HERO SECTION ===
             st.markdown(f"""
             <div class="hero-winner">
@@ -256,19 +278,6 @@ elif selected == "Dashboard":
                 <div class="hero-name">{best_mine}</div>
                 <div style="font-size: 1.2rem; margin-top: 10px;">
                     💎 Skor Net Flow: <b>{best_score:.4f}</b> | Status: <span style="background: #2ecc71; padding: 2px 10px; border-radius: 5px; font-size: 0.9rem;">Sangat Direkomendasikan</span>
-                </div>
-            </div>
-            
-            <div class="insight-box">
-                <div class="insight-title">📝 Catatan & Rekomendasi untuk Manajemen</div>
-                <div class="insight-text">
-                    Berdasarkan hasil analisis komputasi PROMETHEE II, <b>{best_mine}</b> terpilih sebagai opsi paling optimal.
-                    <br><br>
-                    <ul>
-                        <li><b>Keunggulan Kompetitif:</b> Unggul pada aspek <span class="strength-tag">{strengths[0]}</span>, <span class="strength-tag">{strengths[1]}</span>, dan <span class="strength-tag">{strengths[2]}</span>.</li>
-                        <br>
-                        <li><b>Area Perhatian:</b> Perlu mitigasi risiko pada aspek <span class="weakness-tag">{weakness}</span>.</li>
-                    </ul>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -305,8 +314,29 @@ elif selected == "Dashboard":
                 fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=400, margin=dict(l=40, r=40, t=20, b=20))
                 st.plotly_chart(fig_radar, use_container_width=True)
 
+            # =========================================
+            # BAGIAN 3: MANAGEMENT INSIGHT (Posisi Baru di Bawah)
+            # =========================================
+            st.write("<br>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="insight-box">
+                <div class="insight-title">Catatan & Rekomendasi untuk Manajemen</div>
+                <div class="insight-text">
+                    Berdasarkan hasil analisis komputasi menggunakan metode PROMETHEE II dengan parameter di atas, <b>{best_mine}</b> terpilih sebagai opsi paling optimal.
+                    <br><br>
+                    <ul>
+                        <li><b>Keunggulan Kompetitif:</b> IUP ini menunjukkan performa superior (dominan) terutama pada aspek fundamental: 
+                        <span class="strength-tag">{strengths[0]}</span>, <span class="strength-tag">{strengths[1]}</span>, dan <span class="strength-tag">{strengths[2]}</span>.</li>
+                        <br>
+                        <li><b>Area Perhatian (Risiko):</b> Manajemen perlu menyusun strategi mitigasi risiko pada aspek 
+                        <span class="weakness-tag">{weakness}</span>, dimana IUP ini memiliki nilai relatif lebih rendah dibandingkan kompetitor lainnya.</li>
+                    </ul>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
             st.divider()
-            with st.expander("📋 Lihat Tabel Lengkap"):
+            with st.expander("📋 Lihat Tabel Peringkat Lengkap"):
                 st.dataframe(hasil.style.background_gradient(cmap="Blues"), use_container_width=True)
 
     except Exception as e:
